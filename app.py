@@ -260,7 +260,7 @@ if check_auth():
         st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
 
     # 右側主畫面
-    st.title("🎰 V7 Intelligence (修復版)")
+    st.title("🎰 V7 Intelligence (5.4版)")
     st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
     
