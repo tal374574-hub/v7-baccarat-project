@@ -6,7 +6,7 @@ import time
 import matplotlib.pyplot as plt
 
 # --- 0. 網頁基本設定 ---
-st.set_page_config(page_title="V7 Intelligence 4.5", layout="wide", page_icon="🎲")
+st.set_page_config(page_title="V7 Intelligence 5.0", layout="wide", page_icon="🎲")
 
 # CSS 美化
 st.markdown("""
@@ -106,7 +106,7 @@ def check_auth():
     
     return False
 
-# --- 核心 2: AI 多策略運算大腦 (5局版) ---
+# --- 核心 2: AI 多策略運算大腦 (5.0 斷龍邏輯升級) ---
 class BaccaratBrain:
     def __init__(self):
         self.history_db = {
@@ -118,6 +118,7 @@ class BaccaratBrain:
         # 取最新的 5 局
         recent_5 = history_list[-5:]
         
+        # 資料不足時回傳 0.5
         if len(recent_5) < 3: 
             return 0.5, 0.5, 0.5
 
@@ -125,10 +126,10 @@ class BaccaratBrain:
         r1, r2, r3 = recent_5[-1], recent_5[-2], recent_5[-3] 
         pattern_3 = r3 + r2 + r1 
         
-        # 1. 大數據策略
+        # 1. 大數據策略 (權重 40%) - 維持不變
         prob_a = self.history_db.get(pattern_3, self.history_db['default'])
 
-        # 2. 趨勢策略
+        # 計算長龍長度 (Streak Count)
         streak = 1
         current = recent_5[-1]
         for i in range(2, 6):
@@ -136,36 +137,52 @@ class BaccaratBrain:
                 streak += 1
             else:
                 break
-        
+
+        # 2. 趨勢策略 (Trend Strategy) - 權重 40%
+        # 邏輯：只要有龍，趨勢就是追！
         if streak >= 3:
-            prob_b = 0.75 if current == 'B' else 0.25
+            prob_b = 0.80 if current == 'B' else 0.20 # 強力追龍
         elif r1 == r2:
             prob_b = 0.60 if r1 == 'B' else 0.40
         else:
             prob_b = 0.50
 
-        # 3. 反轉策略
-        is_chop = True
-        if len(recent_5) >= 4:
-            for i in range(1, 4):
-                if recent_5[-i] == recent_5[-(i+1)]:
-                    is_chop = False
-                    break
+        # 3. 反轉/斷龍策略 (Reversal Strategy) - 權重 20%
+        # 👇 5.0 重大更新：加入斷龍機率計算 👇
+        prob_c = 0.50 # 預設中立
+        
+        if streak >= 6: 
+            # 🚨 6連龍以上：斷龍機率極高，反轉策略強力建議反買
+            # 如果目前是 B，策略 C 會建議 P (0.20 對 B)
+            prob_c = 0.20 if current == 'B' else 0.80 
+        elif streak >= 4:
+            # 4~5連龍：稍微有一點斷龍風險，但不強
+            prob_c = 0.45 if current == 'B' else 0.55
         else:
-            is_chop = False
+            # 沒有長龍，檢查是否為單跳 (PBPB)
+            is_chop = True
+            if len(recent_5) >= 4:
+                for i in range(1, 4):
+                    if recent_5[-i] == recent_5[-(i+1)]:
+                        is_chop = False
+                        break
+            else:
+                is_chop = False
 
-        if is_chop:
-            prob_c = 0.30 if r1 == 'B' else 0.70
-        elif r1 != r2:
-            prob_c = 0.45 if r1 == 'B' else 0.55
-        else:
-            prob_c = 0.50
+            if is_chop:
+                prob_c = 0.30 if r1 == 'B' else 0.70
+            elif r1 != r2:
+                prob_c = 0.45 if r1 == 'B' else 0.55
+            else:
+                prob_c = 0.50
 
-        return prob_a, prob_b, prob_c
+        return prob_a, prob_b, prob_c, streak
 
     def calculate_final_decision(self, history_list):
-        p_a, p_b, p_c = self.get_strategy_probabilities(history_list)
+        # 接收回傳的 streak (長龍數) 
+        p_a, p_b, p_c, streak = self.get_strategy_probabilities(history_list)
         
+        # 權重分配
         w_a, w_b, w_c = 0.4, 0.4, 0.2
         
         final_b = (p_a * w_a) + (p_b * w_b) + (p_c * w_c)
@@ -174,10 +191,11 @@ class BaccaratBrain:
         return {
             "strategies": [p_a, p_b, p_c],
             "final_b": final_b,
-            "final_p": final_p
+            "final_p": final_p,
+            "streak_count": streak
         }
 
-# --- 新增: 資金管理 (4.1 版邏輯) ---
+# --- 資金管理 (4.1 版邏輯) ---
 def get_betting_advice(win_rate):
     percentage = win_rate * 100
     
@@ -212,14 +230,12 @@ if check_auth():
         trans_map = {"莊": "B", "閒": "P", "和": "T"}
         
         c1, c2, c3, c4, c5 = st.columns(5)
-        # 修正重點：標籤直覺化，左邊就是第1局(最舊)，右邊是第5局(最新)
         with c1: l1 = st.selectbox("第 1 局 (最舊)", options, index=0, key="s1") 
         with c2: l2 = st.selectbox("第 2 局", options, index=0, key="s2")
         with c3: l3 = st.selectbox("第 3 局", options, index=0, key="s3")
         with c4: l4 = st.selectbox("第 4 局", options, index=1, key="s4")
         with c5: l5 = st.selectbox("第 5 局 (最新)", options, index=1, key="s5") 
         
-        # 建立初始列表 [最舊 -> 最新]
         initial_input = [trans_map[l1], trans_map[l2], trans_map[l3], trans_map[l4], trans_map[l5]]
         
         if st.button("🔄 設定/重置 牌局", type="secondary"):
@@ -230,7 +246,7 @@ if check_auth():
         st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
 
     # 右側主畫面
-    st.title("🎰 V7 Intelligence 4.5 (垂直版面修正版)")
+    st.title("🎰 V7 Intelligence 5.0 (動態斷龍修正版)")
     st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
     
@@ -238,7 +254,6 @@ if check_auth():
     if not st.session_state["game_history"]:
         st.session_state["game_history"] = initial_input
 
-    # 取得目前完整的歷史紀錄 (這裡是 [舊 -> 新])
     current_full_history = st.session_state["game_history"]
     
     # 1. 執行運算
@@ -247,6 +262,7 @@ if check_auth():
     
     final_b = result['final_b']
     final_p = result['final_p']
+    streak_count = result['streak_count']
     
     if final_b > final_p:
         rec_text = "莊 (BANKER)"
@@ -259,8 +275,7 @@ if check_auth():
     
     bet_title, border_color, logic_text = get_betting_advice(win_rate)
     
-    # --- 顯示區塊 A: AI 預測大卡片 (置頂) ---
-    # 修正：移除 st.columns，改為直接垂直顯示
+    # --- 顯示區塊 A: AI 預測大卡片 ---
     st.markdown(f"""
     <div style="text-align: center; border: 3px solid {color}; padding: 30px; border-radius: 15px; background-color: #fff;">
         <h4 style="margin:0; color: #888;">下一局 ({len(current_full_history)+1}) 預測</h4>
@@ -269,9 +284,9 @@ if check_auth():
     </div>
     """, unsafe_allow_html=True)
 
-    st.write("") # 空格
+    st.write("") 
 
-    # --- 顯示區塊 B: 配注建議 (移到正下方) ---
+    # --- 顯示區塊 B: 配注建議 ---
     st.markdown(f"""
     <div style="text-align: center; border: 3px dashed {border_color}; padding: 20px; border-radius: 15px; background-color: #f9f9f9;">
         <h3 style="margin:0; color: #555;">💰 配注建議</h3>
@@ -299,11 +314,10 @@ if check_auth():
             st.session_state["game_history"].append("T") 
             st.rerun()
 
-    # --- 顯示區塊 D: 實戰紀錄條 (正常顯示版) ---
+    # --- 顯示區塊 D: 實戰紀錄條 ---
     st.divider()
     st.subheader("📊 近 10 局實戰紀錄")
     
-    # 顯示最後 10 筆，保持 [舊 -> 新] 的順序 (最右邊是最新)
     display_history = st.session_state["game_history"][-10:]
     
     st.caption("⬅️ 較舊 (Oldest) .................................................. 最新 (Newest) ➡️")
@@ -318,11 +332,21 @@ if check_auth():
     
     st.write("") 
 
-    # --- 顯示區塊 E: 策略圖表 ---
+    # --- 顯示區塊 E: 策略圖表 (更新標籤) ---
     strat_probs = result['strategies']
-    strat_names = ['Big Data (40%)', 'Trend (40%)', 'Reversal (20%)']
+    # 更新標籤：明確標示「斷龍修正」
+    strat_names = ['Big Data (40%)', 'Trend (40%)', 'Cut Dragon (20%)']
     
     with st.expander("查看 AI 詳細決策數據", expanded=False):
+        
+        # 顯示長龍狀態
+        if streak_count >= 6:
+            st.warning(f"⚠️ **長龍警戒**: 目前連開 {streak_count} 局，斷龍機率大幅上升！")
+        elif streak_count >= 3:
+            st.success(f"🔥 **趨勢旺盛**: 目前連開 {streak_count} 局，動能強勁。")
+        else:
+            st.info(f"❄️ **盤整局面**: 目前無明顯長龍。")
+
         st.info(f"💡 **AI 決策核心**: {logic_text}")
         
         fig, ax = plt.subplots(figsize=(10, 2)) 
