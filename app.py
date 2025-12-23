@@ -4,9 +4,10 @@ import streamlit as st
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
+import random # 引入隨機模組
 
 # --- 0. 網頁基本設定 ---
-st.set_page_config(page_title="V7 Intelligence 5.1", layout="wide", page_icon="🎲")
+st.set_page_config(page_title="V7 Intelligence 5.2", layout="wide", page_icon="🎲")
 
 # CSS 美化
 st.markdown("""
@@ -106,7 +107,7 @@ def check_auth():
     
     return False
 
-# --- 核心 2: AI 多策略運算大腦 (5.1 全域長龍版) ---
+# --- 核心 2: AI 多策略運算大腦 (5.2 隨機斷龍版) ---
 class BaccaratBrain:
     def __init__(self):
         self.history_db = {
@@ -115,54 +116,64 @@ class BaccaratBrain:
         }
 
     def get_strategy_probabilities(self, history_list):
-        # 1. 確保有足夠資料
         if len(history_list) < 3: 
-            return 0.5, 0.5, 0.5, 0
+            return 0.5, 0.5, 0.5, 0, False
             
-        # 2. 計算全域長龍 (Global Streak)
-        # 這是修復關鍵：我們從最新的結果往回數，直到數到不一樣的為止
+        # 1. 計算全域長龍
         current_streak = 0
         latest_val = history_list[-1]
-        
-        # 使用 reversed 倒著數
         for val in reversed(history_list):
             if val == latest_val:
                 current_streak += 1
             else:
                 break
                 
-        # 取得最後 3 局用於大數據比對
         r1, r2, r3 = history_list[-1], history_list[-2], history_list[-3]
         pattern_3 = r3 + r2 + r1
         
-        # --- 策略 A: 大數據 (Big Data) ---
+        # --- 策略 A: 大數據 ---
         prob_a = self.history_db.get(pattern_3, self.history_db['default'])
 
-        # --- 策略 B: 趨勢 (Trend) ---
-        # 邏輯：連2~5追龍；連6以上動能減弱(視為過熱)
-        if current_streak >= 6:
-            prob_b = 0.55 if latest_val == 'B' else 0.45 # 過熱，趨勢分數降低 (不再盲目追)
-        elif current_streak >= 3:
-            prob_b = 0.80 if latest_val == 'B' else 0.20 # 黃金期，強力追
+        # --- 策略 B: 趨勢 (追龍) ---
+        # 只要有龍，趨勢面一定是看多 (除非斷龍策略強制介入)
+        if current_streak >= 3:
+            prob_b = 0.80 if latest_val == 'B' else 0.20
         elif r1 == r2:
             prob_b = 0.60 if r1 == 'B' else 0.40
         else:
             prob_b = 0.50
 
-        # --- 策略 C: 反轉/斷龍 (Cut Dragon) ---
-        # 邏輯：連6以上，斷龍機率暴增
-        if current_streak >= 6:
-            # 強力斷龍信號！
-            # 如果目前是 B，策略 C 會給出 P 的極高分 (0.90)
-            prob_c = 0.10 if latest_val == 'B' else 0.90 
-        elif current_streak == 5:
-            # 準備斷龍
-            prob_c = 0.30 if latest_val == 'B' else 0.70
+        # --- 策略 C: 反轉/斷龍 (隨機觸發) ---
+        prob_c = 0.50 # 預設中立
+        is_reversal_active = False # 紀錄是否觸發了「隨機斷龍」
+
+        # 👇 5.2 隨機斷龍邏輯 👇
+        # 當長龍在 3 ~ 7 之間，進行隨機檢定
+        if 3 <= current_streak <= 7:
+            # 產生一個 0~1 的隨機數
+            chance = random.random()
+            
+            # 設定觸發門檻 (長龍越長，越容易觸發斷龍)
+            # Streak 3: 閾值 0.2 (20% 機率斷)
+            # Streak 7: 閾值 0.8 (80% 機率斷)
+            # 公式: 0.2 + (streak - 3) * 0.15
+            threshold = 0.2 + (current_streak - 3) * 0.15
+            
+            if chance < threshold:
+                is_reversal_active = True
+                
+        elif current_streak >= 8:
+            # 8連龍以上，強制觸發斷龍 (100%)
+            is_reversal_active = True
+
+        # 如果斷龍機制被觸發 (可能是運氣，也可能是強制)
+        if is_reversal_active:
+            # 強力反買 (如果是莊，就建議閒)
+            prob_c = 0.10 if latest_val == 'B' else 0.90
         else:
-            # 一般情況 (檢查單跳)
+            # 如果沒觸發斷龍，檢查單跳
             is_chop = True
             if len(history_list) >= 4:
-                # 簡單檢查最近4局是否跳
                 recent_4 = history_list[-4:]
                 for i in range(1, 4):
                     if recent_4[-i] == recent_4[-(i+1)]:
@@ -178,24 +189,21 @@ class BaccaratBrain:
             else:
                 prob_c = 0.50
 
-        return prob_a, prob_b, prob_c, current_streak
+        return prob_a, prob_b, prob_c, current_streak, is_reversal_active
 
     def calculate_final_decision(self, history_list):
-        p_a, p_b, p_c, streak = self.get_strategy_probabilities(history_list)
+        p_a, p_b, p_c, streak, is_rev = self.get_strategy_probabilities(history_list)
         
-        # --- 動態權重分配 (Dynamic Weighting) ---
-        # 這是 5.1 的核心：根據戰況改變策略權重
-        
-        if streak >= 6:
-            # 🚨 長龍警戒模式：斷龍策略權重最大
-            w_a = 0.2 # 大數據參考降低
-            w_b = 0.2 # 趨勢參考降低 (因為趨勢快結束了)
-            w_c = 0.6 # 斷龍策略權重拉高至 60%
+        # --- 動態權重分配 ---
+        # 如果「隨機斷龍」被觸發了，反轉策略的話語權大幅提高
+        if is_rev:
+            w_a = 0.2
+            w_b = 0.2
+            w_c = 0.6 # 斷龍策略主導 (因為 AI 決定這把要斬)
         else:
-            # 一般模式：大數據與趨勢為主
             w_a = 0.4
             w_b = 0.4
-            w_c = 0.2
+            w_c = 0.2 # 否則繼續順勢而為
         
         final_b = (p_a * w_a) + (p_b * w_b) + (p_c * w_c)
         final_p = 1.0 - final_b
@@ -205,7 +213,8 @@ class BaccaratBrain:
             "final_b": final_b,
             "final_p": final_p,
             "streak_count": streak,
-            "latest_val": history_list[-1] if history_list else None
+            "latest_val": history_list[-1] if history_list else None,
+            "is_reversal_active": is_rev
         }
 
 # --- 資金管理 ---
@@ -258,11 +267,10 @@ if check_auth():
         st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
 
     # 右側主畫面
-    st.title("🎰 V7 Intelligence 5.1 (全域長龍狙擊版)")
+    st.title("🎰 V7 Intelligence 5.2 (隨機斷龍擬真版)")
     st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
     
-    # 確保有歷史數據
     if not st.session_state["game_history"]:
         st.session_state["game_history"] = initial_input
 
@@ -276,6 +284,7 @@ if check_auth():
     final_p = result['final_p']
     streak_count = result['streak_count']
     latest_val = result['latest_val']
+    is_reversal_active = result['is_reversal_active']
     
     if final_b > final_p:
         rec_text = "莊 (BANKER)"
@@ -347,18 +356,20 @@ if check_auth():
 
     # --- 顯示區塊 E: 策略圖表 ---
     strat_probs = result['strategies']
-    strat_names = ['Big Data (20%/40%)', 'Trend (20%/40%)', 'Cut Dragon (60%/20%)']
+    # 標籤動態化
+    strat_names = ['Big Data (40%/20%)', 'Trend (40%/20%)', 'Cut Dragon (20%/60%)']
     
     with st.expander("查看 AI 詳細決策數據", expanded=False):
         
-        # 動態顯示長龍警告
         streak_target = "莊" if latest_val == 'B' else "閒"
-        if streak_count >= 6:
-            st.error(f"⚠️ **極限長龍警戒**: 目前連開 {streak_count} 個【{streak_target}】。斷龍機率飆升，AI 強力建議反打！")
+        
+        # 顯示長龍與隨機狀態
+        if is_reversal_active:
+            st.warning(f"⚡ **斷龍訊號觸發**: 目前連開 {streak_count} 個【{streak_target}】。AI 運算後判定**這把極高機率會斷**！")
         elif streak_count >= 3:
-            st.success(f"🔥 **順勢而為**: 目前連開 {streak_count} 個【{streak_target}】，處於黃金追龍期。")
+            st.success(f"🔥 **順勢追龍**: 目前連開 {streak_count} 個【{streak_target}】。AI 判定能量尚未耗盡，建議繼續追。")
         else:
-            st.info(f"❄️ **盤整局面**: 目前無長龍，依照大數據與短趨勢判斷。")
+            st.info(f"❄️ **盤整局面**: 目前無長龍。")
 
         st.info(f"💡 **AI 決策核心**: {logic_text}")
         
