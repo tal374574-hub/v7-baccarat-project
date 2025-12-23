@@ -227,7 +227,7 @@ if check_auth():
                 new_u = st.text_input("輸入帳號產生連結")
                 if new_u:
                     # 直接寫死正確的網址，避免抓到舊暫存
-                    final_link = f"https://v7-baccarat-project-jappyrnoebsxea8epxqcekm.streamlit.app/?uid={new_u}"
+                    final_link = f"https://v7-baccarat-project-pyhivmxmirvwp3cskxj2pu.streamlit.app/?uid={new_u}"
                     st.success("✅ 會員連結已生成：")
                     st.code(final_link)
                     st.caption("提示：請複製上方連結發送給客戶。")
