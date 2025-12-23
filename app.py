@@ -1,3 +1,5 @@
+import gspread
+from google.oauth2.service_account import Credentials
 import streamlit as st
 import pandas as pd
 import time
@@ -16,26 +18,42 @@ def check_auth():
     if st.session_state["logged_in"]:
         return True
 
-    # 1. 讀取 Google Sheet 會員名單 (雲端 CSV)
+    # 1. 讀取 Google Sheet 會員名單 (使用機器人金鑰)
     try:
-        # ⚠️⚠️⚠️ 請將下方引號內的網址，換成您自己的 Google Sheet CSV 網址 ⚠️⚠️⚠️
-        sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS26fxX0d970pvnevaoY3MgEMla8mVkNP-IAGcJrLHHPo6q86T5mNajEpp8n-bbjcBNwd6S52kkIQi3/pub?gid=1478541708&single=true&output=csv"
-        
-        # 讀取數據
-        df = pd.read_csv(sheet_url, dtype=str)
-        
+        # 設定權限範圍
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+
+        # 從 Secrets 讀取金鑰並驗證
+        creds = Credentials.from_service_account_info(st.secrets["google_sheets_creds"], scopes=scopes)
+        client = gspread.authorize(creds)
+
+        # ⚠️ 這裡使用您的專屬網址直連
+        sheet_url = "https://docs.google.com/spreadsheets/d/1uNWgRDty4hMOKt71UATZA5r4WcHVDN5ZaC9yQ030Nto/edit#gid=1622652027"
+
+        # 開啟試算表並讀取資料
+        sh = client.open_by_url(sheet_url)
+        worksheet = sh.sheet1
+        data = worksheet.get_all_records()
+
+        # 轉為 DataFrame 並確保欄位是字串格式
+        df = pd.DataFrame(data).astype(str)
+
         # 檢查是否有 Account 欄位並轉為清單
         if 'Account' in df.columns:
             valid_users = df['Account'].dropna().str.strip().tolist()
         else:
             valid_users = []
-    except:
-        # 如果連線失敗 (例如網路問題)，暫時設為空清單
-        st.error("系統連線中斷，無法讀取會員名單。")
+
+    except Exception as e:
+        # 如果連線失敗，顯示錯誤訊息
+        st.error(f"系統連線錯誤: {e}")
         valid_users = []
 
+    # -------------------------------------------------------
+    # 👇 修正重點：以下程式碼必須與 try 對齊，不能放在 except 裡面
+    # -------------------------------------------------------
+
     # 2. 自動登入邏輯 (檢查網址參數 ?uid=xxx)
-    # 使用 st.query_params 獲取參數
     query_params = st.query_params
     url_uid = query_params.get("uid", None)
 
@@ -49,7 +67,7 @@ def check_auth():
         else:
             st.toast("❌ 連結失效或會員未開通", icon="⚠️")
 
-    # 3. 手動登入介面 (如果沒有自動登入)
+    # 3. 手動登入介面
     st.markdown("<br><br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 2, 1])
     
@@ -99,12 +117,10 @@ def predict(r1, r2, r3, df):
         b_rate = 0.5068 # 預設機率
 
     # 策略加權邏輯
-    # 追龍權重: 如果前兩顆一樣，且是莊，加分
     trend = 0.6 if r2==r3 and r3=='B' else 0.4
-    # 單跳權重: 如果跳來跳去，且最後是閒，預測反轉(莊)
     rev = 0.6 if r1!=r2 and r2!=r3 and r3=='P' else 0.4
     
-    # 綜合運算 (歷史50% + 趨勢30% + 反轉20%)
+    # 綜合運算
     final_b = (b_rate * 0.5) + (trend * 0.3) + (rev * 0.2)
     return final_b, 1-final_b, len(matches)
 
@@ -114,12 +130,11 @@ if check_auth():
     with st.sidebar:
         st.success(f"👤 User: {st.session_state['user_id']}")
         
-        # Admin 工具箱 (只有帳號是 admin 才看得到)
         if st.session_state["user_id"] == "admin":
              with st.expander("🛠️ 連結產生器"):
                 new_u = st.text_input("輸入帳號產生連結")
                 if new_u:
-                    st.code(f"https://v7-project.streamlit.app/?uid={new_u}")
+                    st.code(f"https://v7-public.streamlit.app/?uid={new_u}")
 
         if st.button("登出 (Logout)"):
             st.session_state["logged_in"] = False
@@ -162,15 +177,4 @@ if check_auth():
             <div style="text-align: center; border: 2px solid {color}; padding: 20px; border-radius: 10px;">
                 <h3 style="margin:0">AI 建議下注</h3>
                 <h1 style="font-size: 60px; color: {color}; margin: 10px 0;">{rec}</h1>
-                <h4 style="color: gray;">預測勝率: {win_rate*100:.2f}%</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.write("")
-            st.progress(pb, text=f"莊贏機率: {pb*100:.1f}%")
-            
-            with st.expander("查看詳細數據"):
-                st.write(f"歷史相似局數: {count} 局")
-                st.write(f"當前組合: {r1}-{r2}-{r3}")
-    else:
-        st.info("👈 請在左側輸入路單數據並點擊開始預測")
+                <h4 style="color: gray;">預測勝率: {win_
