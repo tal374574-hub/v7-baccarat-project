@@ -220,37 +220,44 @@ if check_auth():
             st.subheader("🧠 策略權重分析 (Strategy Breakdown)")
             
             strat_probs = result['strategies']
-            strat_names = ['大數據 (50%)', '追龍趨勢 (30%)', '反轉平衡 (20%)']
+            
+            # 👇 修改重點：將圖表標籤改為英文，避免亂碼
+            strat_names = ['Big Data (50%)', 'Trend (30%)', 'Reversal (20%)']
             
             # 繪製圖表
             fig, ax = plt.subplots(figsize=(10, 2.5))
+            
             # 莊的機率條 (紅色)
-            p1 = ax.barh(strat_names, [p * 100 for p in strat_probs], color='#FF4B4B', height=0.5, label='莊 Banker')
+            p1 = ax.barh(strat_names, [p * 100 for p in strat_probs], color='#FF4B4B', height=0.5, label='Banker')
+            
             # 閒的機率條 (藍色，疊加在紅色後面)
-            p2 = ax.barh(strat_names, [(1-p) * 100 for p in strat_probs], left=[p * 100 for p in strat_probs], color='#1E90FF', height=0.5, label='閒 Player')
+            p2 = ax.barh(strat_names, [(1-p) * 100 for p in strat_probs], left=[p * 100 for p in strat_probs], color='#1E90FF', height=0.5, label='Player')
             
             # 美化圖表
             ax.set_xlim(0, 100)
             ax.axvline(x=50, color='gray', linestyle='--', alpha=0.5) # 中線
-            ax.legend(loc='upper right', bbox_to_anchor=(1, 1.2), ncol=2)
+            
+            # 圖例改到右下角或上方，避免遮擋
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=2, frameon=False)
+            
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             ax.spines['left'].set_visible(False)
             ax.spines['bottom'].set_visible(False)
             ax.get_xaxis().set_visible(False) # 隱藏 X 軸數字
             
-            # 在條形圖上標示數字
+            # 在條形圖上標示數字 (保持不變)
             for i, p in enumerate(strat_probs):
                 if p > 0.2: ax.text(p*100/2, i, f"{p*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
                 if (1-p) > 0.2: ax.text(p*100 + (1-p)*100/2, i, f"{(1-p)*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
 
             st.pyplot(fig)
 
-            # 文字說明
+            # 文字說明 (這裡依然保留中文，不受影響)
             with st.expander("查看詳細策略邏輯"):
-                st.write(f"📊 **大數據策略**: 檢索歷史庫，該路型 [{r1}-{r2}-{r3}] 莊贏率為 {strat_probs[0]*100:.1f}%")
-                st.write(f"📈 **趨勢策略**: 分析連莊/連閒慣性，判定莊贏率為 {strat_probs[1]*100:.1f}%")
-                st.write(f"🔄 **反轉策略**: 分析單跳/變盤機率，判定莊贏率為 {strat_probs[2]*100:.1f}%")
+                st.write(f"📊 **大數據 (Big Data)**: 檢索歷史庫，該路型 [{r1}-{r2}-{r3}] 莊贏率為 {strat_probs[0]*100:.1f}%")
+                st.write(f"📈 **趨勢 (Trend)**: 分析連莊/連閒慣性，判定莊贏率為 {strat_probs[1]*100:.1f}%")
+                st.write(f"🔄 **反轉 (Reversal)**: 分析單跳/變盤機率，判定莊贏率為 {strat_probs[2]*100:.1f}%")
 
     else:
         st.info("👈 請在左側輸入前三局結果，點擊按鈕開始運算。")
