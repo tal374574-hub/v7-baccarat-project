@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import random # 引入隨機模組
 
 # --- 0. 網頁基本設定 ---
-st.set_page_config(page_title="V7 Intelligence 5.4", layout="wide", page_icon="🎲")
+st.set_page_config(page_title="V7 Intelligence 5.5", layout="wide", page_icon="🎲")
 
 # CSS 美化
 st.markdown("""
@@ -42,7 +42,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 核心 1: 權限驗證系統 (保持不變) ---
+# --- 核心 1: 權限驗證系統 ---
 def check_auth():
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
@@ -107,7 +107,7 @@ def check_auth():
     
     return False
 
-# --- 核心 2: AI 多策略運算大腦 (5.4 機率修正版) ---
+# --- 核心 2: AI 多策略運算大腦 ---
 class BaccaratBrain:
     def __init__(self):
         self.history_db = {
@@ -119,7 +119,6 @@ class BaccaratBrain:
         if len(history_list) < 3: 
             return 0.5, 0.5, 0.5, 0, False
             
-        # 1. 計算全域長龍 (從新往舊數)
         current_streak = 0
         latest_val = history_list[-1]
         for val in reversed(history_list):
@@ -131,10 +130,8 @@ class BaccaratBrain:
         r1, r2, r3 = history_list[-1], history_list[-2], history_list[-3]
         pattern_3 = r3 + r2 + r1
         
-        # --- 策略 A: 大數據 ---
         prob_a = self.history_db.get(pattern_3, self.history_db['default'])
 
-        # --- 策略 B: 趨勢 (追龍) ---
         if current_streak >= 3:
             prob_b = 0.80 if latest_val == 'B' else 0.20
         elif r1 == r2:
@@ -142,11 +139,9 @@ class BaccaratBrain:
         else:
             prob_b = 0.50
 
-        # --- 策略 C: 反轉/斷龍 (隨機斷龍) ---
         prob_c = 0.50
         is_reversal_active = False 
 
-        # 隨機斷龍邏輯 (3~7)
         if 3 <= current_streak <= 7:
             chance = random.random()
             threshold = 0.2 + (current_streak - 3) * 0.15
@@ -180,7 +175,6 @@ class BaccaratBrain:
     def calculate_final_decision(self, history_list):
         p_a, p_b, p_c, streak, is_rev = self.get_strategy_probabilities(history_list)
         
-        # 動態權重
         if is_rev:
             w_a, w_b, w_c = 0.2, 0.2, 0.6 
         else:
@@ -189,9 +183,8 @@ class BaccaratBrain:
         final_b = (p_a * w_a) + (p_b * w_b) + (p_c * w_c)
         final_p = 1.0 - final_b
         
-        # 👇 5.4 修正：和局觸發機率改為 9.5% 👇
         is_tie_triggered = False
-        if random.random() < 0.095: # 0.095 = 9.5%
+        if random.random() < 0.095: 
             is_tie_triggered = True
 
         return {
@@ -206,7 +199,6 @@ class BaccaratBrain:
 
 # --- 資金管理 ---
 def get_betting_advice(win_rate, is_tie=False):
-    # 👇 特殊處理：如果是和局
     if is_tie:
         return "🌟 幸運注 (Lucky Shot)", "#28a745", "隨機和局訊號觸發 (9.5%)！建議小注嘗試和局，亦可觀望。"
 
@@ -228,6 +220,16 @@ if check_auth():
     
     with st.sidebar:
         st.success(f"👤 User: {st.session_state['user_id']}")
+        
+        # --- 連結產生器：已更新為您的真實網址 ---
+        if st.session_state["user_id"] == "admin":
+             with st.expander("🛠️ 連結產生器 (Link Generator)"):
+                new_u = st.text_input("輸入帳號產生連結")
+                if new_u:
+                    # 使用您提供的真實網址
+                    base_url = "https://v7-baccarat-project-cyugdhfxebxthycu64g7fu.streamlit.app" 
+                    st.code(f"{base_url}/?uid={new_u}")
+
         if st.button("登出 (Logout)"):
             st.session_state["logged_in"] = False
             st.rerun()
@@ -258,7 +260,7 @@ if check_auth():
         st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
 
     # 右側主畫面
-    st.title("🎰 V7 Intelligence (5.4 版)")
+    st.title("🎰 V7 Intelligence (修復版)")
     st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
     
@@ -267,7 +269,6 @@ if check_auth():
 
     current_full_history = st.session_state["game_history"]
     
-    # 1. 執行運算
     brain = BaccaratBrain()
     result = brain.calculate_final_decision(current_full_history)
     
@@ -280,8 +281,8 @@ if check_auth():
     
     if is_tie_triggered:
         rec_text = "和 (TIE)"
-        color = "#28a745" # 綠色
-        win_rate = 0.095 # 顯示機率
+        color = "#28a745" 
+        win_rate = 0.095 
         bet_title, border_color, logic_text = get_betting_advice(0, is_tie=True)
     else:
         if final_b > final_p:
@@ -297,7 +298,6 @@ if check_auth():
     
     rate_display = f"綜合勝率: {win_rate*100:.2f}%" if not is_tie_triggered else "✨ 隨機訊號 (9.5%) ✨"
     
-    # --- 顯示區塊 A: AI 預測大卡片 (垂直排列) ---
     st.markdown(f"""
     <div style="text-align: center; border: 3px solid {color}; padding: 30px; border-radius: 15px; background-color: #fff;">
         <h4 style="margin:0; color: #888;">下一局 ({len(current_full_history)+1}) 預測</h4>
@@ -308,7 +308,6 @@ if check_auth():
 
     st.write("") 
 
-    # --- 顯示區塊 B: 配注建議 ---
     st.markdown(f"""
     <div style="text-align: center; border: 3px dashed {border_color}; padding: 20px; border-radius: 15px; background-color: #f9f9f9;">
         <h3 style="margin:0; color: #555;">💰 配注建議</h3>
@@ -316,7 +315,6 @@ if check_auth():
     </div>
     """, unsafe_allow_html=True)
 
-    # --- 顯示區塊 C: 實戰結果登錄 ---
     st.write("")
     st.subheader("📝 實戰結果回報 (Update Result)")
     st.caption("請點擊下方按鈕回報「剛剛開出」的結果，系統將自動修正下一局預測。")
@@ -336,12 +334,10 @@ if check_auth():
             st.session_state["game_history"].append("T") 
             st.rerun()
 
-    # --- 顯示區塊 D: 實戰紀錄條 ---
     st.divider()
     st.subheader("📊 近 10 局實戰紀錄")
     
     display_history = st.session_state["game_history"][-10:]
-    
     st.caption("⬅️ 較舊 (Oldest) .................................................. 最新 (Newest) ➡️")
 
     balls_html = ""
@@ -354,14 +350,11 @@ if check_auth():
     
     st.write("") 
 
-    # --- 顯示區塊 E: 策略圖表 ---
     strat_probs = result['strategies']
     strat_names = ['Big Data (40%/20%)', 'Trend (40%/20%)', 'Cut Dragon (20%/60%)']
     
     with st.expander("查看 AI 詳細決策數據", expanded=False):
-        
         streak_target = "莊" if latest_val == 'B' else "閒"
-        
         if is_tie_triggered:
             st.success("✨ **幸運和局**: 系統計算出微小機率訊號 (9.5%)，建議小注和局。")
         elif is_reversal_active:
@@ -390,5 +383,4 @@ if check_auth():
         for i, p in enumerate(strat_probs):
             if p > 0.2: ax.text(p*100/2, i, f"{p*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
             if (1-p) > 0.2: ax.text(p*100 + (1-p)*100/2, i, f"{(1-p)*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
-
         st.pyplot(fig)
