@@ -6,7 +6,7 @@ import time
 import matplotlib.pyplot as plt
 
 # --- 0. 網頁基本設定 ---
-st.set_page_config(page_title="V7 Intelligence 4.1", layout="wide", page_icon="🎲")
+st.set_page_config(page_title="V7 Intelligence 4.4", layout="wide", page_icon="🎲")
 
 # CSS 美化
 st.markdown("""
@@ -18,19 +18,20 @@ st.markdown("""
     /* 實戰紀錄球樣式 */
     .history-ball {
         display: inline-block;
-        width: 40px;
-        height: 40px;
-        line-height: 40px;
+        width: 45px;
+        height: 45px;
+        line-height: 45px;
         border-radius: 50%;
         text-align: center;
         color: white;
         font-weight: bold;
         margin: 5px;
-        font-size: 18px;
+        font-size: 20px;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
     }
-    .ball-b { background-color: #FF4B4B; }
-    .ball-p { background-color: #1E90FF; }
-    .ball-t { background-color: #28a745; }
+    .ball-b { background-color: #FF4B4B; border: 2px solid #b30000; }
+    .ball-p { background-color: #1E90FF; border: 2px solid #0056b3; }
+    .ball-t { background-color: #28a745; border: 2px solid #1e7e34; }
     
     /* 調整按鈕樣式 */
     .stButton>button { width: 100%; border-radius: 8px; height: 50px; font-size: 18px; }
@@ -54,7 +55,6 @@ def check_auth():
         creds = Credentials.from_service_account_info(st.secrets["google_sheets_creds"], scopes=scopes)
         client = gspread.authorize(creds)
         
-        # ⚠️ 您的專屬網址
         sheet_url = "https://docs.google.com/spreadsheets/d/1uNWgRDty4hMOKt71UATZA5r4WcHVDN5ZaC9yQ030Nto/edit#gid=1622652027"
         
         sh = client.open_by_url(sheet_url)
@@ -115,19 +115,20 @@ class BaccaratBrain:
         }
 
     def get_strategy_probabilities(self, history_list):
-        # 始終取最新的 5 局進行運算
+        # 取最新的 5 局
         recent_5 = history_list[-5:]
         
         if len(recent_5) < 3: 
             return 0.5, 0.5, 0.5
 
+        # recent_5[-1] 是最新
         r1, r2, r3 = recent_5[-1], recent_5[-2], recent_5[-3] 
         pattern_3 = r3 + r2 + r1 
         
         # 1. 大數據策略
         prob_a = self.history_db.get(pattern_3, self.history_db['default'])
 
-        # 2. 趨勢策略 (看 5 局長龍)
+        # 2. 趨勢策略
         streak = 1
         current = recent_5[-1]
         for i in range(2, 6):
@@ -143,7 +144,7 @@ class BaccaratBrain:
         else:
             prob_b = 0.50
 
-        # 3. 反轉策略 (看 5 局單跳)
+        # 3. 反轉策略
         is_chop = True
         if len(recent_5) >= 4:
             for i in range(1, 4):
@@ -176,27 +177,22 @@ class BaccaratBrain:
             "final_p": final_p
         }
 
-# --- 新增: 資金管理 (4.1 修正版) ---
+# --- 新增: 資金管理 (4.1 版邏輯) ---
 def get_betting_advice(win_rate):
     percentage = win_rate * 100
     
-    # 邏輯層級 (嚴格依照新區間)
-    if percentage > 85: # 85% 以上
+    if percentage > 85: 
         return "🔥🔥🔥 重注 (3單位)", "#4CAF50", f"勝率高達 {percentage:.1f}% (>85%)，強力進攻！"
-    
-    elif percentage > 60: # 60% ~ 85%
+    elif percentage > 60: 
         return "🔥 加注 (2單位)", "#FF9800", f"勝率 {percentage:.1f}% (>60%)，建議加注獲利。"
-    
-    elif percentage > 50: # 50% ~ 60%
+    elif percentage > 50: 
         return "💰 平注 (1單位)", "#2196F3", f"勝率 {percentage:.1f}% (>50%)，具微幅優勢，平注跟進。"
-    
-    else: # 50% 或以下 (包含 50.0%)
+    else: 
         return "👀 觀望 (Pass)", "#9E9E9E", f"勝率 {percentage:.1f}% (<=50%)，風險過高，建議暫停。"
 
 # --- 主程式介面 ---
 if check_auth():
     
-    # 初始化 Session State 用於儲存實戰紀錄
     if "game_history" not in st.session_state:
         st.session_state["game_history"] = [] 
     
@@ -207,8 +203,8 @@ if check_auth():
             st.rerun()
         
         st.divider()
-        st.header("⚙️ 初始設定 (Initial Setup)")
-        st.caption("請輸入目前牌桌上的前 5 手作為起始數據")
+        st.header("⚙️ 初始設定")
+        st.caption("請依照時間順序輸入：由左 (第1局) 至 右 (第5局)")
         
         rid = st.text_input("房號", "VIP-01")
         
@@ -216,17 +212,17 @@ if check_auth():
         trans_map = {"莊": "B", "閒": "P", "和": "T"}
         
         c1, c2, c3, c4, c5 = st.columns(5)
-        # 初始設定
-        with c1: l1 = st.selectbox("前1", options, index=0, key="s1") # 最新
-        with c2: l2 = st.selectbox("前2", options, index=1, key="s2")
-        with c3: l3 = st.selectbox("前3", options, index=0, key="s3")
-        with c4: l4 = st.selectbox("前4", options, index=0, key="s4")
-        with c5: l5 = st.selectbox("前5", options, index=1, key="s5")
+        # 修正重點：標籤直覺化，左邊就是第1局(最舊)，右邊是第5局(最新)
+        with c1: l1 = st.selectbox("第 1 局 (最舊)", options, index=0, key="s1") 
+        with c2: l2 = st.selectbox("第 2 局", options, index=0, key="s2")
+        with c3: l3 = st.selectbox("第 3 局", options, index=0, key="s3")
+        with c4: l4 = st.selectbox("第 4 局", options, index=1, key="s4")
+        with c5: l5 = st.selectbox("第 5 局 (最新)", options, index=1, key="s5") 
         
-        # 建立初始列表 (新 -> 舊)
-        initial_input = [trans_map[l5], trans_map[l4], trans_map[l3], trans_map[l2], trans_map[l1]]
+        # 建立初始列表 [最舊 -> 最新]
+        # 這樣就符合時間軸：[l1, l2, l3, l4, l5]
+        initial_input = [trans_map[l1], trans_map[l2], trans_map[l3], trans_map[l4], trans_map[l5]]
         
-        # 重置/開始按鈕
         if st.button("🔄 設定/重置 牌局", type="secondary"):
             st.session_state["game_history"] = initial_input
             st.toast("牌局已重置，開始實戰監控！")
@@ -235,7 +231,7 @@ if check_auth():
         st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
 
     # 右側主畫面
-    st.title("🎰 V7 Intelligence 4.1 (精準控盤版)")
+    st.title("🎰 V7 Intelligence 4.4 (直覺輸入優化版)")
     st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
     
@@ -243,7 +239,7 @@ if check_auth():
     if not st.session_state["game_history"]:
         st.session_state["game_history"] = initial_input
 
-    # 取得目前完整的歷史紀錄
+    # 取得目前完整的歷史紀錄 (這裡是 [舊 -> 新])
     current_full_history = st.session_state["game_history"]
     
     # 1. 執行運算
@@ -304,19 +300,22 @@ if check_auth():
             st.session_state["game_history"].append("T") 
             st.rerun()
 
-    # --- 顯示區塊 C: 實戰紀錄條 ---
+    # --- 顯示區塊 C: 實戰紀錄條 (維持正常時間軸 Left=Old, Right=New) ---
     st.divider()
     st.subheader("📊 近 10 局實戰紀錄")
     
+    # 顯示最後 10 筆，保持 [舊 -> 新] 的順序 (最右邊是最新)
     display_history = st.session_state["game_history"][-10:]
     
+    st.caption("⬅️ 較舊 (Oldest) .................................................. 最新 (Newest) ➡️")
+
     balls_html = ""
     for h in display_history:
         if h == 'B': balls_html += '<div class="history-ball ball-b">莊</div>'
         elif h == 'P': balls_html += '<div class="history-ball ball-p">閒</div>'
         else: balls_html += '<div class="history-ball ball-t">和</div>'
         
-    st.markdown(f'<div style="background:#eee; padding:10px; border-radius:10px; text-align:center;">{balls_html}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="background:#eee; padding:15px; border-radius:10px; text-align:left; overflow-x: auto; white-space: nowrap;">{balls_html}</div>', unsafe_allow_html=True)
     
     st.write("") 
 
