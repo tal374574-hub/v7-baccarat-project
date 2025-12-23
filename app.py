@@ -95,8 +95,9 @@ def check_auth():
             input_pass = st.text_input("系統通行碼 (Passcode)", type="password")
             submitted = st.form_submit_button("登入系統", type="primary")
 
+        # --- 修正後的密碼檢查邏輯 ---
         if submitted:
-            system_pass = st.secrets.get("system_password", "0000")
+            system_pass = st.secrets["system_password"] # 直接讀取，不設預設值
             if input_user in valid_users and input_pass == system_pass:
                 st.session_state["logged_in"] = True
                 st.session_state["user_id"] = input_user
