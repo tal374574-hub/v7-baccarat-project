@@ -224,7 +224,7 @@ if check_auth():
                 new_u = st.text_input("輸入帳號產生連結")
                 if new_u:
                     # 這是您提供的真實網址，去掉末尾可能存在的斜線
-                    raw_url = "https://v7-baccarat-project-5lwsyvyzjquguo6abttwpe.streamlit.app"
+                    raw_url = "https://v7-baccarat-project-toqtjhcy4ngrzlctggqhab.streamlit.app/"
                     clean_url = raw_url.rstrip('/')
                     final_link = f"{clean_url}/?uid={new_u}"
                     st.success("✅ 連結已生成：")
