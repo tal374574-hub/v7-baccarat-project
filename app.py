@@ -56,7 +56,7 @@ def check_auth():
         sheet_url = "https://docs.google.com/spreadsheets/d/1uNWgRDty4hMOKt71UATZA5r4WcHVDN5ZaC9yQ030Nto/edit#gid=1622652027"
         
         sh = client.open_by_url(sheet_url)
-        worksheet = h = sh.sheet1
+        worksheet = sh.sheet1
         data = worksheet.get_all_records()
         df = pd.DataFrame(data).astype(str)
 
