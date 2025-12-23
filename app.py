@@ -218,14 +218,18 @@ if check_auth():
     with st.sidebar:
         st.success(f"👤 User: {st.session_state['user_id']}")
         
-        # --- 連結產生器：已更新為您的真實網址 ---
+        # --- 連結產生器：自動處理網址斜線優化版 ---
         if st.session_state["user_id"] == "admin":
              with st.expander("🛠️ 連結產生器 (Link Generator)"):
                 new_u = st.text_input("輸入帳號產生連結")
                 if new_u:
-                    # 使用您提供的真實網址，確保點擊不會報錯
-                    base_url = "https://v7-baccarat-project-cyugdhfxebxthycu64g7fu.streamlit.app" 
-                    st.code(f"{base_url}/?uid={new_u}")
+                    # 這是您提供的真實網址，去掉末尾可能存在的斜線
+                    raw_url = "https://v7-baccarat-project-cyugdhfxebxthycu64g7fu.streamlit.app"
+                    clean_url = raw_url.rstrip('/')
+                    final_link = f"{clean_url}/?uid={new_u}"
+                    st.success("✅ 連結已生成：")
+                    st.code(final_link)
+                    st.caption("提示：如果點擊仍無權限，請確認 GitHub 倉庫已設定為 Public。")
 
         if st.button("登出 (Logout)"):
             st.session_state["logged_in"] = False
