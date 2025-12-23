@@ -144,12 +144,30 @@ if check_auth():
         st.header("🕹️ 路單輸入")
         rid = st.text_input("房號 (Room ID)", "VIP-01")
         
+        # --- 👇 修改重點開始 👇 ---
+        
+        # 1. 定義中文選項
+        options = ["莊", "閒", "和"]
+        
         c1, c2, c3 = st.columns(3)
-        with c1: r1 = st.selectbox("前3", ["B", "P"], index=0)
-        with c2: r2 = st.selectbox("前2", ["B", "P"], index=1)
-        with c3: r3 = st.selectbox("前1", ["B", "P"], index=0)
+        # index=0 是預設選第一個(莊), index=1 是預設選第二個(閒)
+        with c1: r1_label = st.selectbox("前3", options, index=0)
+        with c2: r2_label = st.selectbox("前2", options, index=1)
+        with c3: r3_label = st.selectbox("前1", options, index=0)
+        
+        # 2. 建立翻譯字典 (介面看中文 -> AI 讀英文)
+        trans_map = {"莊": "B", "閒": "P", "和": "T"}
+        
+        # 3. 轉換成 AI 看得懂的代號 (B, P, T)
+        r1 = trans_map[r1_label]
+        r2 = trans_map[r2_label]
+        r3 = trans_map[r3_label]
+        
+        # --- 👆 修改重點結束 👆 ---
         
         run_btn = st.button("開始預測 (Analyze)", type="primary")
+
+    # 右側主畫面 (以下不用動)
 
     # 右側主畫面
     st.title("🎰 V7 AI 預測終端")
