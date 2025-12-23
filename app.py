@@ -53,10 +53,12 @@ def check_auth():
         creds = Credentials.from_service_account_info(st.secrets["google_sheets_creds"], scopes=scopes)
         client = gspread.authorize(creds)
         
+        # --- 修正後的連線代碼 ---
         sheet_url = "https://docs.google.com/spreadsheets/d/1uNWgRDty4hMOKt71UATZA5r4WcHVDN5ZaC9yQ030Nto/edit#gid=1622652027"
         
         sh = client.open_by_url(sheet_url)
-        worksheet = sh.sheet1
+        # 建議直接指定分頁名稱 "Sheet1" 確保對接正確
+        worksheet = sh.worksheet("sheet1") 
         data = worksheet.get_all_records()
         df = pd.DataFrame(data).astype(str)
 
