@@ -58,7 +58,7 @@ def check_auth():
         
         sh = client.open_by_url(sheet_url)
         # 建議直接指定分頁名稱 "Sheet1" 確保對接正確
-        worksheet = sh.worksheet("sheet1") 
+        worksheet = sh.worksheet("Sheet1") 
         data = worksheet.get_all_records()
         df = pd.DataFrame(data).astype(str)
 
