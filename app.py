@@ -56,7 +56,7 @@ def check_auth():
         sheet_url = "https://docs.google.com/spreadsheets/d/1uNWgRDty4hMOKt71UATZA5r4WcHVDN5ZaC9yQ030Nto/edit#gid=1622652027"
         
         sh = client.open_by_url(sheet_url)
-        worksheet = sh.sheet1
+        worksheet = h = sh.sheet1
         data = worksheet.get_all_records()
         df = pd.DataFrame(data).astype(str)
 
@@ -218,10 +218,12 @@ if check_auth():
     with st.sidebar:
         st.success(f"👤 User: {st.session_state['user_id']}")
         
+        # --- 連結產生器：已更新為您的真實網址 ---
         if st.session_state["user_id"] == "admin":
              with st.expander("🛠️ 連結產生器 (Link Generator)"):
                 new_u = st.text_input("輸入帳號產生連結")
                 if new_u:
+                    # 使用您提供的真實網址，確保點擊不會報錯
                     base_url = "https://v7-baccarat-project-cyugdhfxebxthycu64g7fu.streamlit.app" 
                     st.code(f"{base_url}/?uid={new_u}")
 
@@ -279,7 +281,6 @@ if check_auth():
         color = "#28a745" 
         win_rate = 0.095 
         bet_title, border_color, logic_text = get_betting_advice(0, is_tie=True)
-        # 👇 優化後的文案呈現
         rate_display = "⚠️ 偵測到變盤訊號"
     else:
         if final_b > final_p:
