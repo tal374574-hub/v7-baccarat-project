@@ -93,4 +93,254 @@ def check_auth():
         with st.form("login_form"):
             input_user = st.text_input("會員帳號 (Account)")
             input_pass = st.text_input("系統通行碼 (Passcode)", type="password")
-            submitted = st
+            submitted = st.form_submit_button("登入系統", type="primary")
+
+        if submitted:
+            system_pass = st.secrets.get("system_password", "0000")
+            if input_user in valid_users and input_pass == system_pass:
+                st.session_state["logged_in"] = True
+                st.session_state["user_id"] = input_user
+                st.rerun()
+            else:
+                st.error("❌ 帳號未授權或密碼錯誤")
+    
+    return False
+
+# --- 核心 2: AI 多策略運算大腦 (5局版) ---
+class BaccaratBrain:
+    def __init__(self):
+        self.history_db = {
+            'BBB': 0.60, 'PPP': 0.35, 'BPB': 0.40, 'PBP': 0.65,
+            'BBP': 0.45, 'PPB': 0.55, 'default': 0.5068 
+        }
+
+    def get_strategy_probabilities(self, history_list):
+        # 取最新的 5 局
+        recent_5 = history_list[-5:]
+        
+        if len(recent_5) < 3: 
+            return 0.5, 0.5, 0.5
+
+        # recent_5[-1] 是最新
+        r1, r2, r3 = recent_5[-1], recent_5[-2], recent_5[-3] 
+        pattern_3 = r3 + r2 + r1 
+        
+        # 1. 大數據策略
+        prob_a = self.history_db.get(pattern_3, self.history_db['default'])
+
+        # 2. 趨勢策略
+        streak = 1
+        current = recent_5[-1]
+        for i in range(2, 6):
+            if i <= len(recent_5) and recent_5[-i] == current:
+                streak += 1
+            else:
+                break
+        
+        if streak >= 3:
+            prob_b = 0.75 if current == 'B' else 0.25
+        elif r1 == r2:
+            prob_b = 0.60 if r1 == 'B' else 0.40
+        else:
+            prob_b = 0.50
+
+        # 3. 反轉策略
+        is_chop = True
+        if len(recent_5) >= 4:
+            for i in range(1, 4):
+                if recent_5[-i] == recent_5[-(i+1)]:
+                    is_chop = False
+                    break
+        else:
+            is_chop = False
+
+        if is_chop:
+            prob_c = 0.30 if r1 == 'B' else 0.70
+        elif r1 != r2:
+            prob_c = 0.45 if r1 == 'B' else 0.55
+        else:
+            prob_c = 0.50
+
+        return prob_a, prob_b, prob_c
+
+    def calculate_final_decision(self, history_list):
+        p_a, p_b, p_c = self.get_strategy_probabilities(history_list)
+        
+        w_a, w_b, w_c = 0.4, 0.4, 0.2
+        
+        final_b = (p_a * w_a) + (p_b * w_b) + (p_c * w_c)
+        final_p = 1.0 - final_b
+
+        return {
+            "strategies": [p_a, p_b, p_c],
+            "final_b": final_b,
+            "final_p": final_p
+        }
+
+# --- 新增: 資金管理 (4.1 版邏輯) ---
+def get_betting_advice(win_rate):
+    percentage = win_rate * 100
+    
+    if percentage > 85: 
+        return "🔥🔥🔥 重注 (3單位)", "#4CAF50", f"勝率高達 {percentage:.1f}% (>85%)，強力進攻！"
+    elif percentage > 60: 
+        return "🔥 加注 (2單位)", "#FF9800", f"勝率 {percentage:.1f}% (>60%)，建議加注獲利。"
+    elif percentage > 50: 
+        return "💰 平注 (1單位)", "#2196F3", f"勝率 {percentage:.1f}% (>50%)，具微幅優勢，平注跟進。"
+    else: 
+        return "👀 觀望 (Pass)", "#9E9E9E", f"勝率 {percentage:.1f}% (<=50%)，風險過高，建議暫停。"
+
+# --- 主程式介面 ---
+if check_auth():
+    
+    if "game_history" not in st.session_state:
+        st.session_state["game_history"] = [] 
+    
+    with st.sidebar:
+        st.success(f"👤 User: {st.session_state['user_id']}")
+        if st.button("登出 (Logout)"):
+            st.session_state["logged_in"] = False
+            st.rerun()
+        
+        st.divider()
+        st.header("⚙️ 初始設定")
+        st.caption("請依照時間順序輸入：由左 (第1局) 至 右 (第5局)")
+        
+        rid = st.text_input("房號", "VIP-01")
+        
+        options = ["莊", "閒", "和"]
+        trans_map = {"莊": "B", "閒": "P", "和": "T"}
+        
+        c1, c2, c3, c4, c5 = st.columns(5)
+        # 修正重點：標籤直覺化，左邊就是第1局(最舊)，右邊是第5局(最新)
+        with c1: l1 = st.selectbox("第 1 局 (最舊)", options, index=0, key="s1") 
+        with c2: l2 = st.selectbox("第 2 局", options, index=0, key="s2")
+        with c3: l3 = st.selectbox("第 3 局", options, index=0, key="s3")
+        with c4: l4 = st.selectbox("第 4 局", options, index=1, key="s4")
+        with c5: l5 = st.selectbox("第 5 局 (最新)", options, index=1, key="s5") 
+        
+        # 建立初始列表 [最舊 -> 最新]
+        initial_input = [trans_map[l1], trans_map[l2], trans_map[l3], trans_map[l4], trans_map[l5]]
+        
+        if st.button("🔄 設定/重置 牌局", type="secondary"):
+            st.session_state["game_history"] = initial_input
+            st.toast("牌局已重置，開始實戰監控！")
+            st.rerun()
+            
+        st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
+
+    # 右側主畫面
+    st.title("🎰 V7 Intelligence 4.5 (垂直版面修正版)")
+    st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
+    st.divider()
+    
+    # 確保有歷史數據
+    if not st.session_state["game_history"]:
+        st.session_state["game_history"] = initial_input
+
+    # 取得目前完整的歷史紀錄 (這裡是 [舊 -> 新])
+    current_full_history = st.session_state["game_history"]
+    
+    # 1. 執行運算
+    brain = BaccaratBrain()
+    result = brain.calculate_final_decision(current_full_history)
+    
+    final_b = result['final_b']
+    final_p = result['final_p']
+    
+    if final_b > final_p:
+        rec_text = "莊 (BANKER)"
+        color = "#FF4B4B"
+        win_rate = final_b
+    else:
+        rec_text = "閒 (PLAYER)"
+        color = "#1E90FF"
+        win_rate = final_p
+    
+    bet_title, border_color, logic_text = get_betting_advice(win_rate)
+    
+    # --- 顯示區塊 A: AI 預測大卡片 (置頂) ---
+    # 修正：移除 st.columns，改為直接垂直顯示
+    st.markdown(f"""
+    <div style="text-align: center; border: 3px solid {color}; padding: 30px; border-radius: 15px; background-color: #fff;">
+        <h4 style="margin:0; color: #888;">下一局 ({len(current_full_history)+1}) 預測</h4>
+        <h1 style="font-size: 80px; color: {color}; margin: 10px 0;">{rec_text}</h1>
+        <h4 style="color: gray;">綜合勝率: {win_rate*100:.2f}%</h4>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.write("") # 空格
+
+    # --- 顯示區塊 B: 配注建議 (移到正下方) ---
+    st.markdown(f"""
+    <div style="text-align: center; border: 3px dashed {border_color}; padding: 20px; border-radius: 15px; background-color: #f9f9f9;">
+        <h3 style="margin:0; color: #555;">💰 配注建議</h3>
+        <h2 style="margin: 5px 0; color: {border_color};">{bet_title}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- 顯示區塊 C: 實戰結果登錄 ---
+    st.write("")
+    st.subheader("📝 實戰結果回報 (Update Result)")
+    st.caption("請點擊下方按鈕回報「剛剛開出」的結果，系統將自動修正下一局預測。")
+    
+    b_col, p_col, t_col = st.columns(3)
+    
+    with b_col:
+        if st.button("🔴 莊贏 (Banker Win)"):
+            st.session_state["game_history"].append("B")
+            st.rerun()
+    with p_col:
+        if st.button("🔵 閒贏 (Player Win)"):
+            st.session_state["game_history"].append("P")
+            st.rerun()
+    with t_col:
+        if st.button("🟢 和局 (Tie)"):
+            st.session_state["game_history"].append("T") 
+            st.rerun()
+
+    # --- 顯示區塊 D: 實戰紀錄條 (正常顯示版) ---
+    st.divider()
+    st.subheader("📊 近 10 局實戰紀錄")
+    
+    # 顯示最後 10 筆，保持 [舊 -> 新] 的順序 (最右邊是最新)
+    display_history = st.session_state["game_history"][-10:]
+    
+    st.caption("⬅️ 較舊 (Oldest) .................................................. 最新 (Newest) ➡️")
+
+    balls_html = ""
+    for h in display_history:
+        if h == 'B': balls_html += '<div class="history-ball ball-b">莊</div>'
+        elif h == 'P': balls_html += '<div class="history-ball ball-p">閒</div>'
+        else: balls_html += '<div class="history-ball ball-t">和</div>'
+        
+    st.markdown(f'<div style="background:#eee; padding:15px; border-radius:10px; text-align:left; overflow-x: auto; white-space: nowrap;">{balls_html}</div>', unsafe_allow_html=True)
+    
+    st.write("") 
+
+    # --- 顯示區塊 E: 策略圖表 ---
+    strat_probs = result['strategies']
+    strat_names = ['Big Data (40%)', 'Trend (40%)', 'Reversal (20%)']
+    
+    with st.expander("查看 AI 詳細決策數據", expanded=False):
+        st.info(f"💡 **AI 決策核心**: {logic_text}")
+        
+        fig, ax = plt.subplots(figsize=(10, 2)) 
+        p1 = ax.barh(strat_names, [p * 100 for p in strat_probs], color='#FF4B4B', height=0.6, label='Banker')
+        p2 = ax.barh(strat_names, [(1-p) * 100 for p in strat_probs], left=[p * 100 for p in strat_probs], color='#1E90FF', height=0.6, label='Player')
+        
+        ax.set_xlim(0, 100)
+        ax.axvline(x=50, color='gray', linestyle='--', alpha=0.5)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.3), ncol=2, frameon=False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.get_xaxis().set_visible(False)
+        ax.tick_params(axis='y', which='both', length=0, labelsize=12)
+
+        for i, p in enumerate(strat_probs):
+            if p > 0.2: ax.text(p*100/2, i, f"{p*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
+            if (1-p) > 0.2: ax.text(p*100 + (1-p)*100/2, i, f"{(1-p)*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
+
+        st.pyplot(fig)
