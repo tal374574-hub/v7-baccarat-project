@@ -172,9 +172,11 @@ if check_auth():
                 color = "#1E90FF" # 亮藍色
                 win_rate = pp
             
-            # 顯示大卡片
+           # 顯示大卡片
             st.markdown(f"""
             <div style="text-align: center; border: 2px solid {color}; padding: 20px; border-radius: 10px;">
                 <h3 style="margin:0">AI 建議下注</h3>
                 <h1 style="font-size: 60px; color: {color}; margin: 10px 0;">{rec}</h1>
-                <h4 style="color: gray;">預測勝率: {win_
+                <h4 style="color: gray;">預測勝率: {win_rate*100:.2f}%</h4>
+            </div>
+            """, unsafe_allow_html=True)
