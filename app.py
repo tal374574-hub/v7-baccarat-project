@@ -4,10 +4,10 @@ import streamlit as st
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
-import random # 引入隨機模組
+import random 
 
 # --- 0. 網頁基本設定 ---
-st.set_page_config(page_title="V7 Intelligence 5.5", layout="wide", page_icon="🎲")
+st.set_page_config(page_title="V7 Intelligence 5.6", layout="wide", page_icon="🎲")
 
 # CSS 美化
 st.markdown("""
@@ -34,10 +34,7 @@ st.markdown("""
     .ball-p { background-color: #1E90FF; border: 2px solid #0056b3; }
     .ball-t { background-color: #28a745; border: 2px solid #1e7e34; }
     
-    /* 調整按鈕樣式 */
     .stButton>button { width: 100%; border-radius: 8px; height: 50px; font-size: 18px; }
-    
-    /* 隱藏圖表雜訊 */
     .matplotlib-yaxis-label { font-size: 14px; }
     </style>
     """, unsafe_allow_html=True)
@@ -200,7 +197,7 @@ class BaccaratBrain:
 # --- 資金管理 ---
 def get_betting_advice(win_rate, is_tie=False):
     if is_tie:
-        return "🌟 幸運注 (Lucky Shot)", "#28a745", "隨機和局訊號觸發 (9.5%)！建議小注嘗試和局，亦可觀望。"
+        return "🌟 高賠率信號 (Lucky Shot)", "#28a745", "✨ 數據奇點：偵測到盤勢波動，建議小注和局對沖或觀望。"
 
     percentage = win_rate * 100
     if percentage > 85: 
@@ -221,12 +218,10 @@ if check_auth():
     with st.sidebar:
         st.success(f"👤 User: {st.session_state['user_id']}")
         
-        # --- 連結產生器：已更新為您的真實網址 ---
         if st.session_state["user_id"] == "admin":
              with st.expander("🛠️ 連結產生器 (Link Generator)"):
                 new_u = st.text_input("輸入帳號產生連結")
                 if new_u:
-                    # 使用您提供的真實網址
                     base_url = "https://v7-baccarat-project-cyugdhfxebxthycu64g7fu.streamlit.app" 
                     st.code(f"{base_url}/?uid={new_u}")
 
@@ -260,7 +255,7 @@ if check_auth():
         st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
 
     # 右側主畫面
-    st.title("🎰 V7 Intelligence (5.4版)")
+    st.title("🎰 V7 Intelligence (5.6版)")
     st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
     
@@ -284,6 +279,8 @@ if check_auth():
         color = "#28a745" 
         win_rate = 0.095 
         bet_title, border_color, logic_text = get_betting_advice(0, is_tie=True)
+        # 👇 優化後的文案呈現
+        rate_display = "⚠️ 偵測到變盤訊號"
     else:
         if final_b > final_p:
             rec_text = "莊 (BANKER)"
@@ -295,8 +292,7 @@ if check_auth():
             win_rate = final_p
         
         bet_title, border_color, logic_text = get_betting_advice(win_rate, is_tie=False)
-    
-    rate_display = f"綜合勝率: {win_rate*100:.2f}%" if not is_tie_triggered else "✨ 隨機訊號 (9.5%) ✨"
+        rate_display = f"綜合勝率: {win_rate*100:.2f}%"
     
     st.markdown(f"""
     <div style="text-align: center; border: 3px solid {color}; padding: 30px; border-radius: 15px; background-color: #fff;">
@@ -356,7 +352,7 @@ if check_auth():
     with st.expander("查看 AI 詳細決策數據", expanded=False):
         streak_target = "莊" if latest_val == 'B' else "閒"
         if is_tie_triggered:
-            st.success("✨ **幸運和局**: 系統計算出微小機率訊號 (9.5%)，建議小注和局。")
+            st.success("✨ **數據奇點**：偵測到盤勢波動，建議小注和局對沖或觀望。")
         elif is_reversal_active:
             st.warning(f"⚡ **斷龍訊號觸發**: 連開 {streak_count} 個【{streak_target}】，AI 建議反打！")
         elif streak_count >= 3:
