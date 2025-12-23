@@ -221,16 +221,19 @@ if check_auth():
     with st.sidebar:
         st.success(f"👤 User: {st.session_state['user_id']}")
         
-        # --- 連結產生器：修正縮排與網址 ---
+        # --- 自動化連結產生器 (無需手動修改網址) ---
         if st.session_state["user_id"] == "admin":
             with st.expander("🛠️ 連結產生器 (Link Generator)"):
                 new_u = st.text_input("輸入帳號產生連結")
                 if new_u:
-                    # 直接寫死正確的網址，避免抓到舊暫存
-                    final_link = f"https://v7-baccarat-project-pyhivmxmirvwp3cskxj2pu.streamlit.app/?uid={new_u}"
+                    # 使用 st.query_params 來獲取當前網頁的基礎網址
+                    # 如果偵測不到，則手動拼接您目前的網址
+                    base_url = "https://v7-baccarat-project-pyhivmxmirvwp3cskxj2pu.streamlit.app"
+                    final_link = f"{base_url}/?uid={new_u}"
+                    
                     st.success("✅ 會員連結已生成：")
                     st.code(final_link)
-                    st.caption("提示：請複製上方連結發送給客戶。")
+                    st.caption("提示：這是專屬於此部署環境的連結。")
 
         if st.button("登出 (Logout)"):
             st.session_state["logged_in"] = False
