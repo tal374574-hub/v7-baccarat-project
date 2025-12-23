@@ -220,14 +220,16 @@ if check_auth():
     with st.sidebar:
         st.success(f"👤 User: {st.session_state['user_id']}")
         
+        # --- 連結產生器：修正縮排與網址 ---
         if st.session_state["user_id"] == "admin":
-     with st.expander("🛠️ 連結產生器 (Link Generator)"):
-        new_u = st.text_input("輸入帳號產生連結")
-        if new_u:
-            # 直接使用您正確的真實網址，不經過變數轉換
-            final_link = f"https://v7-baccarat-project-jappyrnoebsxea8epxqcekm.streamlit.app/?uid={new_u}"
-            st.success("✅ 會員連結已重新生成：")
-            st.code(final_link)
+            with st.expander("🛠️ 連結產生器 (Link Generator)"):
+                new_u = st.text_input("輸入帳號產生連結")
+                if new_u:
+                    # 直接寫死正確的網址，避免抓到舊暫存
+                    final_link = f"https://v7-baccarat-project-jappyrnoebsxea8epxqcekm.streamlit.app/?uid={new_u}"
+                    st.success("✅ 會員連結已生成：")
+                    st.code(final_link)
+                    st.caption("提示：請複製上方連結發送給客戶。")
 
         if st.button("登出 (Logout)"):
             st.session_state["logged_in"] = False
