@@ -110,100 +110,93 @@ def check_auth():
 # --- 核心 2: AI 多策略運算大腦 ---
 class BaccaratBrain:
     def __init__(self):
-        self.history_db = {'BBB': 0.60, 'PPP': 0.35, 'BPB': 0.40, 'PBP': 0.65, 'BBP': 0.45, 'PPB': 0.55, 'default': 0.5068}
+        self.history_db = {
+            'BBB': 0.60, 'PPP': 0.35, 'BPB': 0.40, 'PBP': 0.65,
+            'BBP': 0.45, 'PPB': 0.55, 'default': 0.5068 
+        }
 
-    def calculate_final_decision(self, full_history):
-        # 1. 強制只取最新 10 筆
-        history = full_history[-10:]
-        if len(history) < 3:
-            return {"strategies": [0.5, 0.5, 0.5, 0.5], "final_b": 0.5, "final_p": 0.5}
-
-        latest = history[-1]
-        
-        # --- 2. Big Data (歷史排列) ---
-        p_bd = self.history_db.get(history[-3]+history[-2]+history[-1], self.history_db['default'])
-
-        # --- 3. Streak & Chaos (長龍與亂數斷龍) ---
-        streak = 0
-        for v in reversed(history):
-            if v == latest: streak += 1
-            else: break
+    def get_strategy_probabilities(self, history_list):
+        if len(history_list) < 3: 
+            return 0.5, 0.5, 0.5, 0, False
             
-        p_st = 0.5 # 預設
-        is_chaos_cut = False
-        
-        if streak >= 3:
-            # 正常追龍
-            p_st = 0.85 if latest == 'B' else 0.15
-            # Chaos Factor: 龍越長，斷龍機率越高 (3~7)
-            if streak <= 7:
-                cut_chance = 0.15 + (streak - 3) * 0.12 # 3:15%, 4:27%, 5:39%...
-                if random.random() < cut_chance:
-                    is_chaos_cut = True
+        current_streak = 0
+        latest_val = history_list[-1]
+        for val in reversed(history_list):
+            if val == latest_val:
+                current_streak += 1
             else:
-                is_chaos_cut = True # 8連以上強制視為高危險
-
-        # --- 4. Chop Logic (多元單跳偵測) ---
-        p_cp = 0.50
-        chop_strength = 0
+                break
+                
+        r1, r2, r3 = history_list[-1], history_list[-2], history_list[-3]
+        pattern_3 = r3 + r2 + r1
         
-        # 取得最後 6 局 (若不足則補 None)
-        h_rev = history[::-1] + [None]*6
-        r1, r2, r3, r4, r5, r6 = h_rev[0], h_rev[1], h_rev[2], h_rev[3], h_rev[4], h_rev[5]
+        prob_a = self.history_db.get(pattern_3, self.history_db['default'])
 
-        # 邏輯 A: 標準單跳 (BPBP...)
-        if r1 != r2 and r2 != r3:
-            chop_strength = 0.8
-            p_cp = 0.20 if r1 == 'B' else 0.80 # 預測跳
+        if current_streak >= 3:
+            prob_b = 0.80 if latest_val == 'B' else 0.20
+        elif r1 == r2:
+            prob_b = 0.60 if r1 == 'B' else 0.40
+        else:
+            prob_b = 0.50
+
+        prob_c = 0.50
+        is_reversal_active = False 
+
+        if 3 <= current_streak <= 7:
+            chance = random.random()
+            threshold = 0.2 + (current_streak - 3) * 0.15
+            if chance < threshold:
+                is_reversal_active = True     
+        elif current_streak >= 8:
+            is_reversal_active = True
+
+        if is_reversal_active:
+            prob_c = 0.10 if latest_val == 'B' else 0.90
+        else:
+            is_chop = True
+            if len(history_list) >= 4:
+                recent_4 = history_list[-4:]
+                for i in range(1, 4):
+                    if recent_4[-i] == recent_4[-(i+1)]:
+                        is_chop = False
+                        break
+            else:
+                is_chop = False
+
+            if is_chop:
+                prob_c = 0.30 if r1 == 'B' else 0.70
+            elif r1 != r2:
+                prob_c = 0.45 if r1 == 'B' else 0.55
+            else:
+                prob_c = 0.50
+
+        return prob_a, prob_b, prob_c, current_streak, is_reversal_active
+
+    def calculate_final_decision(self, history_list):
+        p_a, p_b, p_c, streak, is_rev = self.get_strategy_probabilities(history_list)
         
-        # 邏輯 B: 雙跳 (BBPP...)
-        elif r1 == r2 and r3 == r4 and r1 != r3:
-            chop_strength = 0.7
-            p_cp = 0.15 if r1 == 'B' else 0.85 # 預測換色
-
-        # 邏輯 C: 2-1 跳 (BBP BBP)
-        elif r1 == r2 and r3 != r2 and r4 != r3 and r5 == r4:
-             chop_strength = 0.6
-             p_cp = 0.30 if r1 == 'B' else 0.70 # 預測換色
-
-        # Chaos Factor for Chop: 單跳 4-6 把後隨機轉龍
-        is_chop_break = False
-        # 簡單計算單跳長度
-        chop_len = 0
-        for i in range(len(history)-1):
-            if history[-(i+1)] != history[-(i+2)]: chop_len += 1
-            else: break
-            
-        if 4 <= chop_len <= 6:
-            # 隨機決定是否這把連龍
-            if random.random() < (0.3 + (chop_len-4)*0.2):
-                is_chop_break = True # 預測會連 (Breaking the chop)
-
-        # --- 5. 綜合權重計算 ---
-        # 權重分配
-        w_bd, w_st, w_cp, w_chaos = 0.25, 0.25, 0.25, 0.25
+        if is_rev:
+            w_a, w_b, w_c = 0.2, 0.2, 0.6 
+        else:
+            w_a, w_b, w_c = 0.4, 0.4, 0.2
         
-        # Chaos 修正 (斷龍信號)
-        p_chaos = 0.5
-        if is_chaos_cut: # 斷龍
-            p_chaos = 0.10 if latest == 'B' else 0.90
-            w_st = 0.10 # 降低追龍權重
-            w_chaos = 0.40 # 提高 Chaos 權重
-            
-        if is_chop_break: # 斷單跳 (轉龍)
-            p_cp = 0.80 if latest == 'B' else 0.20 # 預測跟隨上局 (連)
-            w_cp = 0.50 # 大幅提升 Chop 變盤權重
-
-        final_b = (p_bd * w_bd) + (p_st * w_st) + (p_cp * w_cp) + (p_chaos * w_chaos)
+        final_b = (p_a * w_a) + (p_b * w_b) + (p_c * w_c)
+        final_p = 1.0 - final_b
         
-        # 和局鎖定 9.5%
-        is_tie = random.random() < 0.095
+        is_tie_triggered = False
+        if random.random() < 0.095: 
+            is_tie_triggered = True
 
         return {
-            "strategies": [p_bd, p_st, p_cp, p_chaos],
-            "final_b": final_b, "final_p": 1.0 - final_b,
-            "is_tie": is_tie
+            "strategies": [p_a, p_b, p_c],
+            "final_b": final_b,
+            "final_p": final_p,
+            "streak_count": streak,
+            "latest_val": history_list[-1] if history_list else None,
+            "is_reversal_active": is_rev,
+            "is_tie_triggered": is_tie_triggered 
         }
+
 # --- 資金管理 ---
 def get_betting_advice(win_rate, is_tie=False):
     if is_tie:
