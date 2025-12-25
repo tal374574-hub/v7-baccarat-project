@@ -412,32 +412,46 @@ if check_auth():
     
     with st.expander("查看 AI 詳細決策數據", expanded=False):
         streak_target = "莊" if latest_val == 'B' else "閒"
+        
+        # 顯示邏輯提示
         if is_tie_triggered:
             st.success("✨ **數據奇點**：偵測到盤勢波動，建議小注和局對沖或觀望。")
         elif is_reversal_active:
             st.warning(f"⚡ **斷龍訊號觸發**: 連開 {streak_count} 個【{streak_target}】，AI 建議反打！")
+        elif result['jump_msg'] != "無明顯跳勢" and result['jump_msg'] != "無訊號":
+            st.info(f"🐰 **跳棋訊號**: {result['jump_msg']}，依循規律投注。")
         elif streak_count >= 3:
             st.info(f"🔥 **順勢追龍**: 連開 {streak_count} 個【{streak_target}】，建議追龍。")
         else:
-            st.info(f"❄️ **盤整局面**: 無明顯長龍。")
+            st.info(f"❄️ **盤整局面**: 綜合評估中...")
 
-        st.info(f"💡 **AI 決策核心**: {logic_text}")
+        st.caption(f"💡 AI 決策權重分配: 大數據 {result['weights'][0]*100:.0f}% | 趨勢 {result['weights'][1]*100:.0f}% | 斷龍 {result['weights'][2]*100:.0f}% | 跳棋 {result['weights'][3]*100:.0f}%")
         
-        fig, ax = plt.subplots(figsize=(10, 2)) 
-        p1 = ax.barh(strat_names, [p * 100 for p in strat_probs], color='#FF4B4B', height=0.6, label='Banker')
-        p2 = ax.barh(strat_names, [(1-p) * 100 for p in strat_probs], left=[p * 100 for p in strat_probs], color='#1E90FF', height=0.6, label='Player')
+        # 繪製 4 維度圖表
+        strat_probs = result['strategies']
+        strat_names = ['Big Data', 'Trend', 'Cut Dragon', 'Jump Pattern'] # 4個名稱
+        
+        fig, ax = plt.subplots(figsize=(10, 2.5)) # 高度稍微拉高一點
+        
+        # 莊 Bar
+        ax.barh(strat_names, [p * 100 for p in strat_probs], color='#FF4B4B', height=0.6, label='Banker')
+        # 閒 Bar (堆疊在莊後面)
+        ax.barh(strat_names, [(1-p) * 100 for p in strat_probs], left=[p * 100 for p in strat_probs], color='#1E90FF', height=0.6, label='Player')
         
         ax.set_xlim(0, 100)
         ax.axvline(x=50, color='gray', linestyle='--', alpha=0.5)
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.3), ncol=2, frameon=False)
+        
+        # 隱藏邊框
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
         ax.get_xaxis().set_visible(False)
-        ax.tick_params(axis='y', which='both', length=0, labelsize=12)
+        ax.tick_params(axis='y', which='both', length=0, labelsize=11)
 
+        # 標示數值
         for i, p in enumerate(strat_probs):
-            if p > 0.2: ax.text(p*100/2, i, f"{p*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
-            if (1-p) > 0.2: ax.text(p*100 + (1-p)*100/2, i, f"{(1-p)*100:.0f}%", color='white', ha='center', va='center', fontweight='bold')
+            if p > 0.15: ax.text(p*100/2, i, f"{p*100:.0f}%", color='white', ha='center', va='center', fontweight='bold', fontsize=10)
+            if (1-p) > 0.15: ax.text(p*100 + (1-p)*100/2, i, f"{(1-p)*100:.0f}%", color='white', ha='center', va='center', fontweight='bold', fontsize=10)
+            
         st.pyplot(fig)
