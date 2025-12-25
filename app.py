@@ -336,32 +336,43 @@ if check_auth():
     is_reversal_active = result['is_reversal_active']
     is_tie_triggered = result['is_tie_triggered'] 
     
+    # === [修改開始] 拆分中英文顯示與排版 ===
     if is_tie_triggered:
-        rec_text = "和 (TIE)"
+        main_char = "和"
+        sub_text = "TIE"
         color = "#28a745" 
         win_rate = 0.095 
         bet_title, border_color, logic_text = get_betting_advice(0, is_tie=True)
         rate_display = "⚠️ 偵測到變盤訊號"
     else:
         if final_b > final_p:
-            rec_text = "莊 (BANKER)"
+            main_char = "莊"
+            sub_text = "BANKER"
             color = "#FF4B4B"
             win_rate = final_b
         else:
-            rec_text = "閒 (PLAYER)"
+            main_char = "閒"
+            sub_text = "PLAYER"
             color = "#1E90FF"
             win_rate = final_p
         
         bet_title, border_color, logic_text = get_betting_advice(win_rate, is_tie=False)
         rate_display = f"綜合勝率: {win_rate*100:.2f}%"
     
+    # 修改 CSS 排版：中文大字在下，英文小字在下
     st.markdown(f"""
-    <div style="text-align: center; border: 3px solid {color}; padding: 30px; border-radius: 15px; background-color: #fff;">
+    <div style="text-align: center; border: 3px solid {color}; padding: 20px; border-radius: 15px; background-color: #fff;">
         <h4 style="margin:0; color: #888;">下一局 ({len(current_full_history)+1}) 預測</h4>
-        <h1 style="font-size: 80px; color: {color}; margin: 10px 0;">{rec_text}</h1>
-        <h4 style="color: gray;">{rate_display}</h4>
+        <div style="font-size: 100px; color: {color}; font-weight: 900; line-height: 1.2; margin-top: 5px;">
+            {main_char}
+        </div>
+        <div style="font-size: 24px; color: {color}; font-weight: bold; letter-spacing: 2px; margin-bottom: 15px; margin-top: -10px;">
+            {sub_text}
+        </div>
+        <h4 style="color: gray; margin:0;">{rate_display}</h4>
     </div>
     """, unsafe_allow_html=True)
+    # === [修改結束] ===
 
     st.write("") 
 
