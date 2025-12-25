@@ -241,6 +241,7 @@ if check_auth():
         
         st.divider()
         st.header("⚙️ 初始設定")
+        platform = st.selectbox("選擇平台", ["MT真人", "DG真人"], index=0)
         st.caption("請依照時間順序輸入：由左 (第1局) 至 右 (第5局)")
         
         rid = st.text_input("房號", "VIP-01")
@@ -266,7 +267,8 @@ if check_auth():
 
     # 右側主畫面
     st.title("🎰 V7 Intelligence (5.6版)")
-    st.caption(f"監控目標: {rid} | 模式: Real-time Rolling Analysis")
+    # 這樣標題就會顯示：監控目標: MT真人 - VIP-01 ...
+    st.caption(f"監控目標: {platform} - {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
     
     if not st.session_state["game_history"]:
