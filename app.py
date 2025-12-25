@@ -316,7 +316,7 @@ if check_auth():
         st.info(f"目前實戰紀錄數: {len(st.session_state['game_history'])} 局")
 
     # 右側主畫面
-    st.title("🎰 V7 Intelligence (5.6版)")
+    st.title("🎰 V7 Intelligence (6.0版)")
     # 這樣標題就會顯示：監控目標: MT真人 - VIP-01 ...
     st.caption(f"監控目標: {platform} - {rid} | 模式: Real-time Rolling Analysis")
     st.divider()
