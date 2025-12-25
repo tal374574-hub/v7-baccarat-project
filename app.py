@@ -107,20 +107,69 @@ def check_auth():
     
     return False
 
-# --- 核心 2: AI 多策略運算大腦 ---
+# --- 核心 2: AI 多策略運算大腦 (升級版 v6.0) ---
 class BaccaratBrain:
     def __init__(self):
+        # 1. 大數據資料庫
         self.history_db = {
             'BBB': 0.60, 'PPP': 0.35, 'BPB': 0.40, 'PBP': 0.65,
             'BBP': 0.45, 'PPB': 0.55, 'default': 0.5068 
         }
 
+    # 新增：單雙跳邏輯偵測
+    def get_jump_probability(self, history_list):
+        if len(history_list) < 4:
+            return 0.5, "無訊號"
+
+        # 取最後 6 局來分析 (避免過於久遠的干擾)
+        recent = history_list[-6:]
+        
+        # --- A. 單跳偵測 (B P B P) ---
+        # 檢查最後 4 局是否為單跳形態
+        if len(recent) >= 4:
+            pattern = recent[-4:] # 取最後4個
+            # 範例: B P B P -> 下一把預測 B (0.7) / P B P B -> 下一把預測 P (0.3)
+            # 邏輯：如果是 B P B P (交替)，最後一個是 P，則預測 B
+            is_single_jump = True
+            for i in range(len(pattern)-1):
+                if pattern[i] == pattern[i+1]: # 如果有重複就不是單跳
+                    is_single_jump = False
+                    break
+            
+            if is_single_jump:
+                last_val = pattern[-1]
+                return (0.70 if last_val == 'P' else 0.30), "🔥 單跳鎖定"
+
+        # --- B. 雙跳偵測 (BB PP BB) ---
+        # 檢查最後 4 局 (例如 BB PP)
+        if len(recent) >= 4:
+            # 情況 1: 剛結束一組雙跳，準備接下一組的第一顆 (BB PP -> 預測 B)
+            p4 = recent[-4:]
+            if p4[0] == p4[1] and p4[2] == p4[3] and p4[1] != p4[2]:
+                # 剛剛是 BB PP，最後是 P，那下一把應該要換 B
+                last_val = p4[-1]
+                return (0.70 if last_val == 'P' else 0.30), "🔥 雙跳換邊"
+
+        # 情況 2: 正在雙跳途中 (BB PP B -> 預測 B)
+        if len(recent) >= 5:
+            p5 = recent[-5:] # 例如 BB PP B
+            # 前四個是雙跳結構
+            if p5[0] == p5[1] and p5[2] == p5[3] and p5[1] != p5[2]:
+                # 第5個 (最新) 是否跟第4個不同 (即換邊了)
+                if p5[4] != p5[3]:
+                    # BB PP B -> 預測 B (跟第5個一樣)
+                    return (0.75 if p5[4] == 'B' else 0.25), "🔥 雙跳跟進"
+
+        return 0.5, "無明顯跳勢"
+
     def get_strategy_probabilities(self, history_list):
         if len(history_list) < 3: 
-            return 0.5, 0.5, 0.5, 0, False
+            return 0.5, 0.5, 0.5, 0.5, 0, False, "資料不足"
             
         current_streak = 0
         latest_val = history_list[-1]
+        
+        # 計算連龍 (Streak)
         for val in reversed(history_list):
             if val == latest_val:
                 current_streak += 1
@@ -128,59 +177,58 @@ class BaccaratBrain:
                 break
                 
         r1, r2, r3 = history_list[-1], history_list[-2], history_list[-3]
-        pattern_3 = r3 + r2 + r1
         
-        prob_a = self.history_db.get(pattern_3, self.history_db['default'])
+        # 1. 大數據策略 (Data)
+        pattern_3 = r3 + r2 + r1
+        prob_data = self.history_db.get(pattern_3, self.history_db['default'])
 
+        # 2. 順勢策略 (Trend)
         if current_streak >= 3:
-            prob_b = 0.80 if latest_val == 'B' else 0.20
-        elif r1 == r2:
-            prob_b = 0.60 if r1 == 'B' else 0.40
+            prob_trend = 0.80 if latest_val == 'B' else 0.20
+        elif r1 == r2: # 連2
+            prob_trend = 0.60 if r1 == 'B' else 0.40
         else:
-            prob_b = 0.50
+            prob_trend = 0.50
 
-        prob_c = 0.50
+        # 3. 斷龍策略 (Cut)
+        prob_cut = 0.50
         is_reversal_active = False 
 
-        if 3 <= current_streak <= 7:
+        if 4 <= current_streak <= 7:
             chance = random.random()
-            threshold = 0.2 + (current_streak - 3) * 0.15
+            threshold = 0.25 + (current_streak - 3) * 0.15
             if chance < threshold:
-                is_reversal_active = True     
+                is_reversal_active = True      
         elif current_streak >= 8:
             is_reversal_active = True
 
         if is_reversal_active:
-            prob_c = 0.10 if latest_val == 'B' else 0.90
+            prob_cut = 0.15 if latest_val == 'B' else 0.85 # 強力反打
         else:
-            is_chop = True
-            if len(history_list) >= 4:
-                recent_4 = history_list[-4:]
-                for i in range(1, 4):
-                    if recent_4[-i] == recent_4[-(i+1)]:
-                        is_chop = False
-                        break
-            else:
-                is_chop = False
+            # 一般情況看震盪
+            prob_cut = 0.5
 
-            if is_chop:
-                prob_c = 0.30 if r1 == 'B' else 0.70
-            elif r1 != r2:
-                prob_c = 0.45 if r1 == 'B' else 0.55
-            else:
-                prob_c = 0.50
+        # 4. 單雙跳策略 (Jump) - 新增
+        prob_jump, jump_msg = self.get_jump_probability(history_list)
 
-        return prob_a, prob_b, prob_c, current_streak, is_reversal_active
+        return prob_data, prob_trend, prob_cut, prob_jump, current_streak, is_reversal_active, jump_msg
 
     def calculate_final_decision(self, history_list):
-        p_a, p_b, p_c, streak, is_rev = self.get_strategy_probabilities(history_list)
+        p_data, p_trend, p_cut, p_jump, streak, is_rev, jump_msg = self.get_strategy_probabilities(history_list)
         
+        # --- 權重設定 (Weights) ---
+        # 總和必須為 1.0
         if is_rev:
-            w_a, w_b, w_c = 0.2, 0.2, 0.6 
+            # 斷龍模式：大幅降低其他權重，主攻斷龍
+            w_data, w_trend, w_cut, w_jump = 0.15, 0.15, 0.60, 0.10
+        elif jump_msg != "無訊號" and jump_msg != "無明顯跳勢":
+             # 跳棋模式：如果偵測到單雙跳，提高跳棋權重
+            w_data, w_trend, w_cut, w_jump = 0.20, 0.20, 0.10, 0.50
         else:
-            w_a, w_b, w_c = 0.4, 0.4, 0.2
+            # 一般模式：平均分配，稍重趨勢與數據
+            w_data, w_trend, w_cut, w_jump = 0.30, 0.30, 0.20, 0.20
         
-        final_b = (p_a * w_a) + (p_b * w_b) + (p_c * w_c)
+        final_b = (p_data * w_data) + (p_trend * w_trend) + (p_cut * w_cut) + (p_jump * w_jump)
         final_p = 1.0 - final_b
         
         is_tie_triggered = False
@@ -188,15 +236,17 @@ class BaccaratBrain:
             is_tie_triggered = True
 
         return {
-            "strategies": [p_a, p_b, p_c],
+            "strategies": [p_data, p_trend, p_cut, p_jump],
+            "weights": [w_data, w_trend, w_cut, w_jump],
             "final_b": final_b,
             "final_p": final_p,
             "streak_count": streak,
             "latest_val": history_list[-1] if history_list else None,
             "is_reversal_active": is_rev,
+            "jump_msg": jump_msg,
             "is_tie_triggered": is_tie_triggered 
         }
-
+        
 # --- 資金管理 ---
 def get_betting_advice(win_rate, is_tie=False):
     if is_tie:
