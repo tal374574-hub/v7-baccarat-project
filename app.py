@@ -232,8 +232,8 @@ class BaccaratBrain:
         final_p = 1.0 - final_b
         
         is_tie_triggered = False
-        if random.random() < 0.095: 
-            is_tie_triggered = True
+        #   random.random() < 0.095: # 先將這行註解掉，就不會觸發和局
+         #   is_tie_triggered = True
 
         return {
             "strategies": [p_data, p_trend, p_cut, p_jump],
